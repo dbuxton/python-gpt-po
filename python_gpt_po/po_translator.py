@@ -21,12 +21,13 @@ logging.basicConfig(level=logging.INFO)
 
 class TranslationConfig:
     """ Class to hold configuration parameters for the translation service. """
-    def __init__(self, client, model, bulk_mode=False, fuzzy=False, folder_language=False):  # pylint: disable=R0913
+    def __init__(self, client, model, bulk_mode=False, fuzzy=False, folder_language=False, refresh_all=False):  # pylint: disable=R0913
         self.client = client
         self.model = model
         self.bulk_mode = bulk_mode
         self.fuzzy = fuzzy
         self.folder_language = folder_language
+        self.refresh_all = refresh_all
 
 
 class TranslationService:
@@ -148,7 +149,7 @@ class TranslationService:
                 texts_to_translate = [
                     entry.msgid
                     for entry in po_file
-                    if not entry.msgstr and entry.msgid and 'fuzzy' not in entry.flags
+                    if (not entry.msgstr and entry.msgid and 'fuzzy' not in entry.flags) or (entry.msgid and self.config.refresh_all)
                 ]
                 self.process_translations(texts_to_translate, file_lang, po_file, po_file_path)
 
@@ -190,7 +191,12 @@ class TranslationService:
         """Translates texts one by one and updates the .po file."""
         for index, text in enumerate(texts):
             logging.info("Translating text %s/%s in file %s", (index + 1), len(texts), po_file_path)
-            translation_request = f"Please translate the following text from English into {target_language}: {text}"
+            translation_request = (
+                f"You are an expert translator, translating items in a `.po` file to localize an "
+                "application.\n You must always choose the most likely translation based on limited "
+                "context, or if you have doubts, return the original English text.\n"
+                "Please translate the following text from English into {target_language}: {text}"
+            )
             translated_texts = []
             self.perform_translation(translation_request, translated_texts, batch=False)
             if translated_texts:
@@ -242,6 +248,7 @@ def main():
     parser.add_argument("--model", default="gpt-3.5-turbo-1106", help="OpenAI model to use for translations")
     parser.add_argument("--api_key", help="OpenAI API key")
     parser.add_argument("--folder-language", action="store_true", help="Set language from directory structure")
+    parser.add_argument("--refresh_all", action="store_true", help="Re-do all existing translations")
 
     args = parser.parse_args()
 
@@ -250,7 +257,7 @@ def main():
     client = OpenAI(api_key=api_key)
 
     # Create a configuration object
-    config = TranslationConfig(client, args.model, args.bulk, args.fuzzy, args.folder_language)
+    config = TranslationConfig(client, args.model, args.bulk, args.fuzzy, args.folder_language, args.refresh_all)
 
     # Initialize the translation service with the configuration object
     translation_service = TranslationService(config)
