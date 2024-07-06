@@ -201,11 +201,15 @@ class TranslationService:
                 next = texts[index + 1]
             surrounding = [prev, next]
             surrounding = [f"\"{s}\"" for s in surrounding if s]
-            context = f"For context, the surrounding texts in the file are {', '.join(surrounding)}."
+            context = f"- For context, the surrounding texts in the file are {', '.join(surrounding)}."
             translation_request = (
                 "You are an expert translator, translating items in a `.po` file to localize a software "
-                "application.\n You must always choose the most likely translation based on limited "
+                "application.\n"
+                "- You must always choose the most likely translation based on limited "
                 "context, or if you have doubts, return the original English text.\n"
+                "- Do not wrap your translation in quotes or other formatting\n"
+                "- Ensure that variable names, links etc are preserved verbatim.\n"
+                "- Don't include any context on how you arrived at your translation\n"
                 f"{surrounding}\n\n"
                 f"Please translate the following text from English into {target_language}: {text}"
             )
