@@ -191,10 +191,22 @@ class TranslationService:
         """Translates texts one by one and updates the .po file."""
         for index, text in enumerate(texts):
             logging.info("Translating text %s/%s in file %s", (index + 1), len(texts), po_file_path)
+            if index > 0:
+                prev = texts[index - 1]
+            else:
+                prev = None
+            if index == len(texts) - 1:
+                next = None
+            else:
+                next = texts[index + 1]
+            surrounding = [prev, next]
+            surrounding = [f"\"{s}\"" for s in surrounding if s]
+            context = f"For context, the surrounding texts in the file are {', '.join(surrounding)}."
             translation_request = (
-                "You are an expert translator, translating items in a `.po` file to localize an "
+                "You are an expert translator, translating items in a `.po` file to localize a software "
                 "application.\n You must always choose the most likely translation based on limited "
                 "context, or if you have doubts, return the original English text.\n"
+                f"{surrounding}\n\n"
                 f"Please translate the following text from English into {target_language}: {text}"
             )
             translated_texts = []
