@@ -192,10 +192,10 @@ class TranslationService:
         for index, text in enumerate(texts):
             logging.info("Translating text %s/%s in file %s", (index + 1), len(texts), po_file_path)
             translation_request = (
-                f"You are an expert translator, translating items in a `.po` file to localize an "
+                "You are an expert translator, translating items in a `.po` file to localize an "
                 "application.\n You must always choose the most likely translation based on limited "
                 "context, or if you have doubts, return the original English text.\n"
-                "Please translate the following text from English into {target_language}: {text}"
+                f"Please translate the following text from English into {target_language}: {text}"
             )
             translated_texts = []
             self.perform_translation(translation_request, translated_texts, batch=False)
