@@ -138,14 +138,12 @@ class TranslationService:
             potential_json = "\n".join(lines)
             try:
                 jsn = json.loads(potential_json)
+                if jsn.get("failed"):
+                    translated_texts.append((0, ""))
+                else:
+                    translated_texts.append((0, jsn.get("translation")))
             except Exception:
                 logging.error(f"Translation failed: response `{raw_response}`")
-                translated_texts.append((0, ""))
-
-            if not raw_response.startswith("The provided text does not seem to be"):
-                translated_texts.append((0, raw_response))
-            else:
-                logging.error("No valid translation found for text")
                 translated_texts.append((0, ""))
 
     def scan_and_process_po_files(self, input_folder, languages):
