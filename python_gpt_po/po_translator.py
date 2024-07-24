@@ -247,6 +247,7 @@ class TranslationService:
 - If you can't translate with confidence, set the `failed` key in your response to `true`"
 - For context, the surrounding texts in the file are {', '.join(surrounding)}. Don't translate these; just use them as hints as to meaning of ambiguous words.{context}
 - Put the finished translation into the key `translation` in your JSON response
+- Make sure that the JSON you produce is correct; in particular you must make sure that newlines are formatted as \\n not as actual newlines.
 
 Please translate the following text from English into language with ISO-code `{target_language}`:
 ```
