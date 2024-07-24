@@ -237,7 +237,7 @@ class TranslationService:
             else:
                 _next = texts[index + 1]
             surrounding = [prev, _next]
-            surrounding = [f'"{s[0]}"' for s in surrounding if s[0]]
+            surrounding = [f'"{s[0]}"' for s in surrounding if s and s[0]]
             context = f"\n- The msgctx of the string you have been asked to translate is \"{ctx}\". Remember, you shouldn't translate this but it might help with ambiguity of the text."
             translation_request = f"""You are an expert translator, translating items in a `.po` file to localize a software application.
 - You must always choose the most likely translation based on limited context, or if you have doubts, return the original English text.
