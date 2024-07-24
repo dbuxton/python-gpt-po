@@ -116,35 +116,18 @@ class TranslationService:
         raw_response = completion.choices[0].message.content.strip()
         logging.info("Raw API response: %s", raw_response)
 
-        if batch:
-            for line in raw_response.split("\n"):
-                try:
-                    index_str, translation = line.split(": ", 1)
-                    index = int(index_str.strip())
-                    translation = translation.strip()
-                    if translation and not translation.startswith(
-                        "The provided text does not seem to be"
-                    ):
-                        translated_texts.append((index, translation))
-                    else:
-                        logging.error("No valid translation found for index %s", index)
-                        translated_texts.append((index, ""))
-                except ValueError:  # pylint: disable=W0718
-                    logging.error("Error parsing line: '%s'", line)
-                    translated_texts.append((index, ""))
-        else:
-            # Strip any ``` from the output
-            lines = [l for l in raw_response.splitlines() if not l.startswith("```")]
-            potential_json = "\n".join(lines)
-            try:
-                jsn = json.loads(potential_json)
-                if jsn.get("failed"):
-                    translated_texts.append((0, ""))
-                else:
-                    translated_texts.append((0, jsn.get("translation")))
-            except Exception:
-                logging.error(f"Translation failed: response `{raw_response}`")
+        # Strip any ``` from the output
+        lines = [l for l in raw_response.splitlines() if not l.startswith("```")]
+        potential_json = "\n".join(lines)
+        try:
+            jsn = json.loads(potential_json)
+            if jsn.get("failed"):
                 translated_texts.append((0, ""))
+            else:
+                translated_texts.append((0, jsn.get("translation")))
+        except Exception:
+            logging.exception(f"Translation failed: response `{raw_response}`")
+            translated_texts.append((0, ""))
 
     def scan_and_process_po_files(self, input_folder, languages):
         """Scans and processes .po files in the given input folder."""
@@ -197,7 +180,7 @@ class TranslationService:
                 # Reload the po file after modifications
                 po_file = polib.pofile(po_file_path)
                 texts_to_translate = [
-                    entry.msgid
+                    (entry.msgid, entry.msgctx)
                     for entry in po_file
                     if (not entry.msgstr and entry.msgid and "fuzzy" not in entry.flags)
                     or (entry.msgid and self.config.refresh_all)
@@ -233,20 +216,12 @@ class TranslationService:
 
     def process_translations(self, texts, target_language, po_file, po_file_path):
         """Processes translations either in bulk or one by one."""
-        if self.config.bulk_mode:
-            self.translate_in_bulk(texts, target_language, po_file, po_file_path)
-        else:
-            self.translate_one_by_one(texts, target_language, po_file, po_file_path)
-
-    def translate_in_bulk(self, texts, target_language, po_file, po_file_path):
-        """Translates texts in bulk and applies them to the .po file."""
-        self.total_batches = (len(texts) - 1) // 50 + 1
-        translated_texts = self.translate_bulk(texts, target_language, po_file_path, 0)
-        self.apply_translations_to_po_file(translated_texts, texts, po_file)
+        self.translate_one_by_one(texts, target_language, po_file, po_file_path)
 
     def translate_one_by_one(self, texts, target_language, po_file, po_file_path):
         """Translates texts one by one and updates the .po file."""
-        for index, text in enumerate(texts):
+        for index, text_tuple in enumerate(texts):
+            text, ctx = text_tuple
             logging.info(
                 "Translating text %s/%s in file %s",
                 (index + 1),
@@ -258,19 +233,19 @@ class TranslationService:
             else:
                 prev = None
             if index == len(texts) - 1:
-                next = None
+                _next = None
             else:
-                next = texts[index + 1]
-            surrounding = [prev, next]
-            surrounding = [f'"{s}"' for s in surrounding if s]
-            context = f""
+                _next = texts[index + 1]
+            surrounding = [prev, _next]
+            surrounding = [f'"{s[0]}"' for s in surrounding if s[0]]
+            context = f"\n- The msgctx of the string you have been asked to translate is \"{ctx}\". Remember, you shouldn't translate this but it might help with ambiguity of the text."
             translation_request = f"""You are an expert translator, translating items in a `.po` file to localize a software application.
 - You must always choose the most likely translation based on limited context, or if you have doubts, return the original English text.
 - Do not wrap your translation in quotes or other formatting.
 - Ensure that variable names, links etc are preserved verbatim.
 - Don't include any context on how you arrived at your translation
 - If you can't translate with confidence, set the `failed` key in your response to `true`"
-- For context, the surrounding texts in the file are {', '.join(surrounding)}. Don't translate these; just use them as hints as to meaning of ambiguous words.
+- For context, the surrounding texts in the file are {', '.join(surrounding)}. Don't translate these; just use them as hints as to meaning of ambiguous words.{context}
 - Put the finished translation into the key `translation` in your JSON response
 
 Please translate the following text from English into language with ISO-code `{target_language}`:
@@ -279,7 +254,7 @@ Please translate the following text from English into language with ISO-code `{t
 ```
 Your JSON output:"""
             translated_texts = []
-            self.perform_translation(translation_request, translated_texts, batch=False)
+            self.perform_translation(translation_request, translated_texts)
             if translated_texts:
                 translated_text = translated_texts[0][1]
 
