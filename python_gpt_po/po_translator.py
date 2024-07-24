@@ -180,7 +180,7 @@ class TranslationService:
                 # Reload the po file after modifications
                 po_file = polib.pofile(po_file_path)
                 texts_to_translate = [
-                    (entry.msgid, entry.msgctx)
+                    (entry.msgid, entry.msgctxt)
                     for entry in po_file
                     if (not entry.msgstr and entry.msgid and "fuzzy" not in entry.flags)
                     or (entry.msgid and self.config.refresh_all)
