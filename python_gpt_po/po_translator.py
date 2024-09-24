@@ -31,6 +31,8 @@ class TranslationConfig:
         fuzzy=False,
         folder_language=False,
         refresh_all=False,
+        fix_braces=False,
+        fix_newlines=False,
     ):  # pylint: disable=R0913
         self.client = client
         self.model = model
@@ -38,7 +40,8 @@ class TranslationConfig:
         self.fuzzy = fuzzy
         self.folder_language = folder_language
         self.refresh_all = refresh_all
-
+        self.fix_braces = fix_braces
+        self.fix_newlines = fix_newlines
 
 class TranslationService:
     """Class to encapsulate translation functionalities."""
