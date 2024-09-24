@@ -182,8 +182,20 @@ class TranslationService:
                 texts_to_translate = [
                     (entry.msgid, entry.msgctxt)
                     for entry in po_file
-                    if (not entry.msgstr and entry.msgid and "fuzzy" not in entry.flags)
-                    or (entry.msgid and self.config.refresh_all)
+                    if (
+                        (not entry.msgstr and entry.msgid and "fuzzy" not in entry.flags)
+                        or (entry.msgid and self.config.refresh_all)
+                        or (
+                            self.config.fix_newlines
+                            and (
+                                entry.msgid.startswith("\n") != entry.msgstr.startswith("\n")
+                                or entry.msgid.endswith("\n") != entry.msgstr.endswith("\n")
+                            )
+                        )
+                        or (
+                            self.config.fix_braces and '{' in entry.msgid and '{' not in entry.msgstr
+                        )
+                    )
                 ]
                 self.process_translations(
                     texts_to_translate, file_lang, po_file, po_file_path
@@ -243,11 +255,13 @@ class TranslationService:
 - You must always choose the most likely translation based on limited context, or if you have doubts, return the original English text.
 - Do not wrap your translation in quotes or other formatting.
 - Ensure that variable names, links etc are preserved verbatim.
+- All items in braces\ must be preserved verbatim.
 - Don't include any context on how you arrived at your translation
 - If you can't translate with confidence, set the `failed` key in your response to `true`"
 - For context, the surrounding texts in the file are {', '.join(surrounding)}. Don't translate these; just use them as hints as to meaning of ambiguous words.{context}
 - Put the finished translation into the key `translation` in your JSON response
 - Make sure that the JSON you produce is correct; in particular you must make sure that newlines are formatted as \\n not as actual newlines.
+- If the text you are translating begins and/or ends with a newline, make sure that the translation does too.
 
 Please translate the following text from English into language with ISO-code `{target_language}`:
 ```
@@ -315,7 +329,7 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="gpt-3.5-turbo-1106",
+        default="gpt-4o-mini",
         help="OpenAI model to use for translations",
     )
     parser.add_argument("--api_key", help="OpenAI API key")
@@ -326,6 +340,12 @@ def main():
     )
     parser.add_argument(
         "--refresh_all", action="store_true", help="Re-do all existing translations"
+    )
+    parser.add_argument(
+        "--fix-newlines", action="store_true", help="Fix newlines in translations"
+    )
+    parser.add_argument(
+        "--fix-braces", action="store_true", help="Fix braces in translations"
     )
 
     args = parser.parse_args()
@@ -342,6 +362,8 @@ def main():
         args.fuzzy,
         args.folder_language,
         args.refresh_all,
+        args.fix_braces,
+        args.fix_newlines,
     )
 
     # Initialize the translation service with the configuration object
