@@ -284,6 +284,14 @@ Your JSON output:"""
         """Updates a .po file entry with the translated text."""
         entry = po_file.find(original_text)
         if entry:
+            if original_text.startswith('\n') and not translated_text.startswith('\n'):
+                translated_text = '\n' + translated_text
+            if not original_text.startswith('\n') and translated_text.startswith('\n'):
+                translated_text = translated_text.lstrip('\n')
+            if original_text.endswith('\n') and not translated_text.endswith('\n'):
+                translated_text = translated_text + '\n'
+            if not original_text.endswith('\n') and translated_text.endswith('\n'):
+                translated_text = translated_text.rstrip('\n')
             entry.msgstr = translated_text
 
     def apply_translations_to_po_file(self, translated_texts, original_texts, po_file):
